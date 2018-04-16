@@ -61,7 +61,7 @@ void *producer()
         int fullvalue;
         sem_getvalue(&empty,&emptyvalue);
         sem_getvalue(&full,&fullvalue);
-        if(fullvalue==BUFFER_SIZE-1 && emptyvalue== 0)
+        if(fullvalue==BUFFER_SIZE-1 || emptyvalue== 0)
         printf("\n\t\t\tOVERFLOW");
         sem_wait(&empty);
         sem_wait(&mutex);
