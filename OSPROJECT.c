@@ -4,93 +4,76 @@
 #include<semaphore.h>
 #define TRUE 1
 sem_t full,empty,mutex;
-int BUFFER_SIZE=10;
+int BUFFER_SIZE=6;
 int front,rear;
 long randomise;
 void * consumer();
 void * producer();
-int insert_item(int);
+void insert_item(int);
 void remove_item();
-pthread_t tid[20];
+pthread_t tidp[20],tidc[20];
 int *buffer;
 int main()
 {
-    int main_sleep_time,no_of_thread;
+    int main_sleep_time,no_of_thread_producer,no_of_thread_consumer;
     printf("Enter the number of main_sleep_time\t");
     scanf("%d",&main_sleep_time);
-    printf("Enter the number of thread\t");
-    scanf("%d",&no_of_thread);
-    if(no_of_thread>20)
+    printf("Enter the number of producer thread\t");
+    scanf("%d",&no_of_thread_producer);
+	printf("Enter the number of thread consumer thread\t");
+	scanf("%d",&no_of_thread_consumer);
+    main_sleep_time/=100;
+	 
+    if(no_of_thread_producer>20||no_of_thread_consumer>20)
     {
         printf("Please,limit the number of thread created");
     }
-    else{
-    buffer=(int*)calloc(BUFFER_SIZE,sizeof(int));
-    sem_init(&mutex,0,1);
-    sem_init(&empty,0,BUFFER_SIZE-1);
-    sem_init(&full,0,0);
-    front=-1;
-    rear=-1;
-    randomise=100000000000;
-    int i;
-    for(i=0;i<no_of_thread;i++)
-    {
-         pthread_create(&tid[i],NULL,producer,NULL);
-         i++;
-         pthread_create(&tid[i],NULL,consumer,NULL);
-        
-    }
-    for(i=0;i<no_of_thread;i++)
-    {
-        pthread_join(tid[i],NULL);
+   
+    else
+
+    {	if(no_of_thread_consumer>no_of_thread_producer)
+		no_of_thread_consumer=no_of_thread_producer;
+        buffer=(int*)calloc(BUFFER_SIZE,sizeof(int));
+        sem_init(&mutex,0,1);
+        sem_init(&empty,0,BUFFER_SIZE);
+        sem_init(&full,0,0);
+        front=-1;
+        rear=-1;
+        randomise=100000000000;
+        int i;
+        for(i=0;i<no_of_thread_producer;i++)
+		 pthread_create(&tidp[i],NULL,producer,NULL);
+        for(i=0;i<no_of_thread_consumer;i++)
+		 pthread_create(&tidc[i],NULL,consumer,NULL);
+        for(i=0;i<no_of_thread_producer;i++)
+           pthread_join(tidp[i],NULL);
+        for(i=0;i<no_of_thread_consumer;i++)
+		 pthread_join(tidc[i],NULL);
     }
     sleep(main_sleep_time);
-    printf("Exit the program\n");
+    printf("\nExit the program\n");
     exit(0);
-    }
 }
-
 void *producer()    
-{  
-	    do{
-		int item;
+{
+    do{
+	int item;
         int random_sleep_time= rand()/randomise;    //to generate random sleep time
         sleep(random_sleep_time);            
         item=rand()%100;  //generates random item
-        int emptyvalue;
-        int fullvalue;
-        sem_getvalue(&empty,&emptyvalue);
-        sem_getvalue(&full,&fullvalue);
-        if(fullvalue==BUFFER_SIZE-1 || emptyvalue== 0)
-        printf("\n\t\t\tOVERFLOW");
         sem_wait(&empty);
         sem_wait(&mutex);
-        int x=insert_item(item);
-        if(x==0)
-        {
-            printf("\n%d PRODUCED SUCCESSFULLY IN BUFFER",item);
-        }
-        else
-        {
-            printf("\nPRODUCTION FAILED");
-        }
+        insert_item(item);
         sem_post(&mutex);
         sem_post(&full);
-        
     	pthread_exit(0);
     }while(TRUE);
 }
 void *consumer()
 
 {     do{
-  int random_sleep_time= rand()/randomise;
-        sleep(random_sleep_time);  
-        int emptyvalue;
-        int fullvalue;
-        sem_getvalue(&empty,&emptyvalue);
-        sem_getvalue(&full,&fullvalue);
-        if(fullvalue==0 || emptyvalue==BUFFER_SIZE-1 )
-        printf("\n\t\t\tUNDERFLOW");
+        int random_sleep_time= rand()/randomise;
+        sleep(random_sleep_time);
         sem_wait(&full);
         sem_wait(&mutex);
         remove_item();
@@ -99,35 +82,56 @@ void *consumer()
         pthread_exit(0);
     }while(TRUE);
 }
-int insert_item(int item)
+void  insert_item(int item)
 {
-        if(rear == -1)
-            {
-                rear=0;
-                front=0;
-            }
-        else if(rear == BUFFER_SIZE -1)    
-            rear=0;
-        else
+             if(rear == BUFFER_SIZE -1 && front!=0)
+                 rear=-1;
             rear=rear+1;
             buffer[rear]=item;
-        return 0;
-}  
+            if(front==-1)
+            front=0;
+		printf("\n%d IS PRODUCED IN THE BUFFER",item);
+		display();
+           
+}
 void  remove_item()
 {
-       printf("\n%d IS CONSUMNED FROM THE BUFFER",buffer[front]);
-        if(front == rear)
-            {
-                front=-1;
-                rear=-1;
-            }
-        else if(front ==BUFFER_SIZE-1)
+       printf("\n%d IS CONSUMNED FROM THE BUFFER",buffer[front++]);
+         if(front ==BUFFER_SIZE)
         {
             front=0;
         }
-        else
+        if(front-1==rear)
         {
-            front++;
+            front=-1;
+            rear=-1;
         }
-    
+	display();
 }
+void display()
+{   printf("\t\t");
+	if(front == -1 || rear==-1)
+      printf("Circular Queue is Empty!!!");
+     else{
+      int i = front;
+      if(front <= rear)
+      {
+	    while(i <= rear)
+	    printf("%d  ",buffer[i++]);
+      }
+      else
+      {
+	    while(i <= BUFFER_SIZE - 1)
+	    printf("%d ", buffer[i++]);
+	    i = 0;
+	    while(i <= rear)
+	    printf("%d ",buffer[i++]);
+      }
+   }
+}
+
+
+
+
+
+
